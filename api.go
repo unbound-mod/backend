@@ -86,7 +86,7 @@ func RegisterRoutes() {
 		}
 
 		c.SetCookie("authorization_token", tokens.AccessToken, tokens.ExpiresIn, "/", c.Request.Host, false, false)
-		c.SetCookie("refresh_token", tokens.RefreshToken, 0, "/", c.Request.Host, false, false)
+		c.SetCookie("refresh_token", tokens.RefreshToken, 34560000, "/", c.Request.Host, false, false)
 
 		c.JSON(http.StatusOK, gin.H{
 			"success": true,
