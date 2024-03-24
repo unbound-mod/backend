@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -52,6 +54,20 @@ func RegisterRoutes() {
 
 	id := env["DISCORD_CLIENT_ID"]
 	scope := env["DISCORD_SCOPE"]
+	domain := env["DOMAIN"]
+
+	if isDevelopment {
+		domain = "localhost"
+	}
+
+	api.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://unbound.rip", "http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST"},
+		AllowHeaders:     []string{"Origin"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	api.GET("/login", func(c *gin.Context) {
 		code, exists := c.GetQuery("code")
@@ -62,8 +78,6 @@ func RegisterRoutes() {
 		}
 
 		if !exists {
-			logger.Info("no code, redirecting", c.Request.URL.Scheme)
-
 			redirect := url.QueryEscape(scheme + c.Request.Host + c.Request.URL.Path)
 			scopes := url.QueryEscape(scope)
 
@@ -85,12 +99,45 @@ func RegisterRoutes() {
 			return
 		}
 
-		c.SetCookie("authorization_token", tokens.AccessToken, tokens.ExpiresIn, "/", c.Request.Host, false, false)
-		c.SetCookie("refresh_token", tokens.RefreshToken, 34560000, "/", c.Request.Host, false, false)
+		c.SetCookie("authorization_token", tokens.AccessToken, tokens.ExpiresIn, "/", domain, false, false)
+		c.SetCookie("refresh_token", tokens.RefreshToken, 34560000, "/", domain, false, false)
 
-		c.JSON(http.StatusOK, gin.H{
-			"success": true,
-			"data":    tokens,
-		})
+		if isDevelopment {
+			c.Redirect(http.StatusPermanentRedirect, "http://localhost:3000")
+		} else {
+			c.Redirect(http.StatusPermanentRedirect, fmt.Sprintf("https://%v", domain))
+		}
+	})
+
+	api.POST("/revoke", func(c *gin.Context) {
+		token, exists := c.GetQuery("token")
+
+		scheme := "http://"
+		if c.Request.TLS != nil {
+			scheme = "https://"
+		}
+
+		if !exists {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "URL param \"token\" is not present.",
+			})
+
+			return
+		}
+
+		redirect := scheme + c.Request.Host + "/login"
+		err := RevokeAuthorization(token, redirect)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   fmt.Sprint(err),
+			})
+
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"success": true})
 	})
 }

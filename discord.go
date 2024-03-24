@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -9,8 +10,6 @@ import (
 )
 
 func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessResponse, error) {
-	logger.Info(code, redirect)
-
 	id := env["DISCORD_CLIENT_ID"]
 	secret := env["DISCORD_CLIENT_SECRET"]
 
@@ -22,16 +21,14 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 	data.Set("client_id", id)
 	data.Set("client_secret", secret)
 
-	path := "https://discord.com/api/v10/oauth2/token"
-	auth, err := http.NewRequest("POST", path, strings.NewReader(data.Encode()))
-
-	auth.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	auth, err := http.NewRequest("POST", "https://discord.com/api/oauth2/token", strings.NewReader(data.Encode()))
 
 	if err != nil {
 		logger.Errorf("Failed to initialize request while getting authorization tokens from code: %v", err)
 		return AuthorizeSuccessResponse{}, err
 	}
 
+	auth.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	res, err := request.Do(auth)
 
 	if err != nil {
@@ -40,11 +37,10 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 	}
 
 	defer res.Body.Close()
-
 	body, err := io.ReadAll(res.Body)
 
 	if err != nil {
-		logger.Errorf("Failed to read body: %v", err)
+		logger.Errorf("Failed to read body while getting authorization tokens from code: %v", err)
 		return AuthorizeSuccessResponse{}, err
 	}
 
@@ -53,7 +49,7 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 		err := json.Unmarshal([]byte(body), &response)
 
 		if err != nil {
-			logger.Errorf("Failed to unmarshall body: %v", err)
+			logger.Errorf("Failed to unmarshall body while getting authorization tokens from code: %v", err)
 			return AuthorizeSuccessResponse{}, err
 		}
 
@@ -64,9 +60,55 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 	err = json.Unmarshal([]byte(body), &response)
 
 	if err != nil {
-		logger.Errorf("Failed to unmarshall body: %v", err)
+		logger.Errorf("Failed to unmarshall body while getting authorization tokens from code: %v", err)
 		return AuthorizeSuccessResponse{}, err
 	}
 
 	return response, nil
+}
+
+func RevokeAuthorization(authorization string, redirect string) error {
+	id := env["DISCORD_CLIENT_ID"]
+	secret := env["DISCORD_CLIENT_SECRET"]
+
+	data := url.Values{}
+
+	data.Set("token_type_hint", "access_token")
+	data.Set("token", authorization)
+	data.Set("redirect_uri", redirect)
+	data.Set("client_id", id)
+	data.Set("client_secret", secret)
+
+	auth, err := http.NewRequest("POST", "https://discord.com/api/oauth2/token/revoke", strings.NewReader(data.Encode()))
+
+	if err != nil {
+		logger.Errorf("Failed to initialize request while revoking authorization token: %v", err)
+		return err
+	}
+
+	auth.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	res, err := request.Do(auth)
+
+	if err != nil {
+		logger.Errorf("Failed to revoke authorization token: %v", err)
+		return err
+	}
+
+	if res.StatusCode == 200 {
+		return nil
+	}
+
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		logger.Errorf("Failed to read body while getting authorization tokens from code: %v", err)
+		return err
+	}
+
+	logger.Infof("%v", string(body))
+
+	message := fmt.Sprintf("Failed to revoke authorization token with status %v", res.StatusCode)
+
+	return errors.New(message)
 }

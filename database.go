@@ -20,7 +20,7 @@ func InitializeORM() {
 
 	instance, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: gl.New(
-			log.New(os.Stdout, "\r\n", log.LstdFlags), // io writer
+			log.New(os.Stdout, "\r\n", log.LstdFlags),
 			gl.Config{
 				SlowThreshold:             time.Second,
 				LogLevel:                  gl.Warn,
