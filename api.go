@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -52,9 +53,9 @@ func RegisterRoutes() {
 		})
 	})
 
-	id := env["DISCORD_CLIENT_ID"]
-	scope := env["DISCORD_SCOPE"]
-	domain := env["DOMAIN"]
+	id := os.Getenv("DISCORD_CLIENT_ID")
+	scope := os.Getenv("DISCORD_SCOPE")
+	domain := os.Getenv("DOMAIN")
 
 	if isDevelopment {
 		domain = "localhost"

@@ -6,12 +6,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 )
 
 func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessResponse, error) {
-	id := env["DISCORD_CLIENT_ID"]
-	secret := env["DISCORD_CLIENT_SECRET"]
+	id := os.Getenv("DISCORD_CLIENT_ID")
+	secret := os.Getenv("DISCORD_CLIENT_SECRET")
 
 	data := url.Values{}
 
@@ -68,8 +69,8 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 }
 
 func RevokeAuthorization(authorization string, redirect string) error {
-	id := env["DISCORD_CLIENT_ID"]
-	secret := env["DISCORD_CLIENT_SECRET"]
+	id := os.Getenv("DISCORD_CLIENT_ID")
+	secret := os.Getenv("DISCORD_CLIENT_SECRET")
 
 	data := url.Values{}
 

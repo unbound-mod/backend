@@ -23,31 +23,25 @@ var logger = log.NewWithOptions(os.Stderr, log.Options{
 var (
 	db            *gorm.DB
 	api           *gin.Engine
-	env           map[string]string
 	isDevelopment bool
 	json          = jsoniter.ConfigCompatibleWithStandardLibrary
 	request       = &http.Client{}
 )
 
 func main() {
-	envFile, err := godotenv.Read(".env")
-
-	if err != nil {
-		logger.Fatalf("Failed to load .env file (Does it exist?): %v", err)
-		return
-	}
-
-	// Go does not allow assigning to global variables while also creating new variables
-	env = envFile
-
-	if env["MODE"] == "DEVELOPMENT" {
-		logger.Info("Running in DEVELOPMENT mode.")
-		isDevelopment = true
-	} else {
+	if os.Getenv("MODE") == "PRODUCTION" {
 		logger.Info("Running in PRODUCTION mode.")
 		gin.SetMode(gin.ReleaseMode)
-	}
+	} else {
+		err := godotenv.Load()
+		logger.Info("Running in DEVELOPMENT mode.")
+		isDevelopment = true
 
+		if err != nil {
+			logger.Fatalf("Failed to load .env file (Does it exist?): %v", err)
+			return
+		}
+	}
 	InitializeORM()
 	InitializeAPI()
 }

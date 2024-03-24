@@ -11,7 +11,7 @@ import (
 )
 
 func InitializeORM() {
-	dsn := env["DB_DSN"]
+	dsn := os.Getenv("DB_DSN")
 
 	if dsn == "" {
 		logger.Fatalf("DB_DSN environment variable is not present.")
