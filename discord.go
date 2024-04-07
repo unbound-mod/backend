@@ -8,9 +8,11 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	Structures "unbound.rip/backend/structures"
 )
 
-func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessResponse, error) {
+func GetAuthorizationFromCode(code string, redirect string) (*Structures.AuthorizeSuccessResponse, error) {
 	id := os.Getenv("DISCORD_CLIENT_ID")
 	secret := os.Getenv("DISCORD_CLIENT_SECRET")
 
@@ -26,7 +28,7 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 
 	if err != nil {
 		logger.Errorf("Failed to initialize request while getting authorization tokens from code: %v", err)
-		return AuthorizeSuccessResponse{}, err
+		return nil, err
 	}
 
 	auth.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -34,7 +36,7 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 
 	if err != nil {
 		logger.Errorf("Failed to exchange code for authorization token: %v", err)
-		return AuthorizeSuccessResponse{}, err
+		return nil, err
 	}
 
 	defer res.Body.Close()
@@ -42,30 +44,77 @@ func GetAuthorizationFromCode(code string, redirect string) (AuthorizeSuccessRes
 
 	if err != nil {
 		logger.Errorf("Failed to read body while getting authorization tokens from code: %v", err)
-		return AuthorizeSuccessResponse{}, err
+		return nil, err
 	}
 
 	if res.StatusCode == 400 {
-		response := AuthorizeErrorResponse{}
+		response := Structures.AuthorizeErrorResponse{}
 		err := json.Unmarshal([]byte(body), &response)
 
 		if err != nil {
 			logger.Errorf("Failed to unmarshall body while getting authorization tokens from code: %v", err)
-			return AuthorizeSuccessResponse{}, err
+			return nil, err
 		}
 
-		return AuthorizeSuccessResponse{}, errors.New(response.ErrorDescription)
+		return nil, errors.New(response.ErrorDescription)
 	}
 
-	response := AuthorizeSuccessResponse{}
+	response := Structures.AuthorizeSuccessResponse{}
 	err = json.Unmarshal([]byte(body), &response)
 
 	if err != nil {
 		logger.Errorf("Failed to unmarshall body while getting authorization tokens from code: %v", err)
-		return AuthorizeSuccessResponse{}, err
+		return nil, err
 	}
 
-	return response, nil
+	return &response, nil
+}
+
+func GetDiscordUserFromAuth(auth string) (*Structures.DiscordUser, error) {
+	req, err := http.NewRequest("GET", "https://discord.com/api/users/@me", nil)
+
+	if err != nil {
+		logger.Errorf("Failed to initialize request while getting authorization tokens from code: %v", err)
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+auth)
+	res, err := request.Do(req)
+
+	if err != nil {
+		logger.Errorf("Failed to exchange code for authorization token: %v", err)
+		return nil, err
+	}
+
+	defer res.Body.Close()
+	body, err := io.ReadAll(res.Body)
+
+	if err != nil {
+		logger.Errorf("Failed to read body while getting authorization tokens from code: %v", err)
+		return nil, err
+	}
+
+	if res.StatusCode == 400 {
+		response := Structures.AuthorizeErrorResponse{}
+		err := json.Unmarshal([]byte(body), &response)
+
+		if err != nil {
+			logger.Errorf("Failed to unmarshall body while getting authorization tokens from code: %v", err)
+			return nil, err
+		}
+
+		return nil, errors.New(response.ErrorDescription)
+	}
+
+	response := Structures.DiscordUser{}
+	err = json.Unmarshal([]byte(body), &response)
+
+	if err != nil {
+		logger.Errorf("Failed to unmarshall body while getting authorization tokens from code: %v", err)
+		return nil, err
+	}
+
+	return &response, nil
 }
 
 func RevokeAuthorization(authorization string, redirect string) error {

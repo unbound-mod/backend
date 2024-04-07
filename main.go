@@ -42,6 +42,7 @@ func main() {
 			return
 		}
 	}
+
 	InitializeORM()
 	InitializeAPI()
 }

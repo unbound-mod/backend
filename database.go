@@ -8,6 +8,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	gl "gorm.io/gorm/logger"
+	Structures "unbound.rip/backend/structures"
 )
 
 func InitializeORM() {
@@ -42,5 +43,5 @@ func InitializeORM() {
 }
 
 func AutoMigrate() {
-	db.AutoMigrate(&User{})
+	db.AutoMigrate(&Structures.User{}, &Structures.Addon{})
 }
